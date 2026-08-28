@@ -38,3 +38,5 @@ export const getFormats = (videoId) =>
 export const getJobs = () => request('/api/jobs')
 
 export const getConfig = () => request('/api/config')
+
+export const triggerScan = () => request('/api/scan', { method: 'POST' })

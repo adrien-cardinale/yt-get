@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from ytmusicapi import YTMusic
 
+import navidrome
 from downloader import (
     MUSIC_DIR,
     QUALITIES,
@@ -196,7 +197,16 @@ def list_jobs():
 
 @app.get("/api/config")
 def config():
-    return {"musicDir": str(MUSIC_DIR)}
+    return {"musicDir": str(MUSIC_DIR), "navidrome": navidrome.enabled()}
+
+
+@app.post("/api/scan")
+def scan():
+    try:
+        navidrome.trigger_scan()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Scan impossible : {exc}") from exc
+    return {"ok": True}
 
 
 # En production : sert le frontend compilé (frontend/dist)

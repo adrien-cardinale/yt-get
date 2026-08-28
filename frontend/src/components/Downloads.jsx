@@ -1,4 +1,14 @@
-import { CheckCircle2Icon, DownloadIcon, Loader2Icon, MusicIcon, XCircleIcon } from 'lucide-react'
+import { useRef, useState } from 'react'
+import {
+  CheckCircle2Icon,
+  DownloadIcon,
+  Loader2Icon,
+  MusicIcon,
+  RefreshCwIcon,
+  XCircleIcon,
+} from 'lucide-react'
+import { triggerScan } from '../api.js'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 
 const QUALITY_LABEL = {
@@ -15,6 +25,7 @@ function StatusLine({ job }) {
     return (
       <span className="text-success flex items-center gap-1">
         <CheckCircle2Icon className="size-3.5" /> Terminé · {quality}
+        {job.scan === 'ok' && ' · scan lancé'}
       </span>
     )
   }
@@ -36,13 +47,58 @@ function StatusLine({ job }) {
   return <span className="text-muted-foreground">En attente · {quality}</span>
 }
 
-export default function Downloads({ jobs }) {
+function ScanButton() {
+  const [state, setState] = useState('idle') // idle | busy | ok | error
+  const timer = useRef(null)
+
+  const scan = async () => {
+    setState('busy')
+    clearTimeout(timer.current)
+    try {
+      await triggerScan()
+      setState('ok')
+    } catch {
+      setState('error')
+    }
+    timer.current = setTimeout(() => setState('idle'), 3000)
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className={
+        state === 'ok' ? 'text-success' : state === 'error' ? 'text-destructive' : ''
+      }
+      title={
+        state === 'error'
+          ? 'Échec du scan Navidrome'
+          : 'Lancer un scan de la bibliothèque Navidrome'
+      }
+      disabled={state === 'busy'}
+      onClick={scan}
+    >
+      {state === 'ok' ? (
+        <CheckCircle2Icon />
+      ) : state === 'error' ? (
+        <XCircleIcon />
+      ) : (
+        <RefreshCwIcon className={state === 'busy' ? 'animate-spin' : ''} />
+      )}
+    </Button>
+  )
+}
+
+export default function Downloads({ jobs, navidrome }) {
   return (
     <aside className="bg-card/40 shrink-0 border-t p-5 lg:sticky lg:top-0 lg:h-screen lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
-      <h2 className="text-muted-foreground mb-4 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
-        <DownloadIcon className="size-3.5" />
-        Téléchargements
-      </h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
+          <DownloadIcon className="size-3.5" />
+          Téléchargements
+        </h2>
+        {navidrome && <ScanButton />}
+      </div>
 
       {jobs.length === 0 && (
         <p className="text-muted-foreground text-sm">Aucun téléchargement.</p>
@@ -75,6 +131,9 @@ export default function Downloads({ jobs }) {
             {job.status === 'downloading' && <Progress value={job.progress * 100} />}
             {job.error && (
               <p className="text-destructive text-xs break-words">{job.error}</p>
+            )}
+            {job.scan && job.scan !== 'ok' && (
+              <p className="text-destructive text-xs break-words">Scan Navidrome : {job.scan}</p>
             )}
           </div>
         ))}

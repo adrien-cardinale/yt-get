@@ -34,10 +34,17 @@ export default function App() {
   const [openSong, setOpenSong] = useState(null)
   const [jobs, setJobs] = useState([])
   const [musicDir, setMusicDir] = useState('')
+  const [navidrome, setNavidrome] = useState(false)
   const lastSearch = useRef('')
 
   useEffect(() => {
-    api.getConfig().then((c) => setMusicDir(c.musicDir)).catch(() => {})
+    api
+      .getConfig()
+      .then((c) => {
+        setMusicDir(c.musicDir)
+        setNavidrome(c.navidrome)
+      })
+      .catch(() => {})
   }, [])
 
   // Rafraîchit la liste des téléchargements tant qu'un job est actif
@@ -163,7 +170,7 @@ export default function App() {
         </div>
       </main>
 
-      <Downloads jobs={jobs} />
+      <Downloads jobs={jobs} navidrome={navidrome} />
 
       {openSong && (
         <SongView song={openSong} onClose={() => setOpenSong(null)} onDownloadSong={startSong} />

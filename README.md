@@ -77,5 +77,11 @@ Le backend sert alors le frontend compilé (`frontend/dist`) directement sur
 - **Suivi** : le panneau latéral affiche la progression en temps réel
   (polling toutes les secondes).
 
-Après un téléchargement, lancez un scan de bibliothèque dans Navidrome (ou
-attendez le scan automatique).
+## Scan Navidrome
+
+Si les variables d'environnement `NAVIDROME_URL`, `NAVIDROME_USER` et
+`NAVIDROME_PASS` sont définies (voir `docker-compose.yml`), un scan de
+bibliothèque est déclenché automatiquement via l'API Subsonic
+(`/rest/startScan`) à la fin de chaque téléchargement réussi, et un bouton ⟳
+dans le panneau Téléchargements permet d'en lancer un manuellement. Sinon,
+lancez un scan depuis Navidrome ou attendez son scan automatique.

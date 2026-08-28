@@ -11,6 +11,8 @@ from pathlib import Path
 
 import requests
 import yt_dlp
+
+import navidrome
 from mutagen.flac import Picture
 from mutagen.id3 import APIC, ID3, TALB, TDRC, TIT2, TPE1, TPE2, TRCK
 from mutagen.mp4 import MP4, MP4Cover
@@ -217,6 +219,7 @@ def create_job(kind: str, title: str, artist: str, thumbnail: str | None,
         "status": "queued",  # queued | downloading | done | error
         "progress": 0.0,
         "error": None,
+        "scan": None,  # "ok" | "échec : …" une fois le scan Navidrome tenté
         "tracks": [
             {"title": t["title"], "status": "queued", "progress": 0.0} for t in tracks
         ],
@@ -259,6 +262,12 @@ def run_job(job: dict, tracks: list[dict], cover_url: str | None, quality: str) 
     else:
         job["status"] = "done"
         job["error"] = "; ".join(errors) or None
+        if navidrome.enabled():
+            try:
+                navidrome.trigger_scan()
+                job["scan"] = "ok"
+            except Exception as exc:  # noqa: BLE001 — le scan ne doit pas faire échouer le job
+                job["scan"] = f"échec : {exc}"
 
 
 def start_job(kind: str, title: str, artist: str, thumbnail: str | None,
