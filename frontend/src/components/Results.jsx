@@ -1,30 +1,30 @@
+import { ChevronRightIcon, MusicIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+
 export default function Results({ results, type, loading, onOpenSong, onOpenAlbum }) {
   if (loading) {
     return (
-      <div className="grid">
+      <div className="grid gap-3 sm:grid-cols-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="card skeleton" />
+          <Skeleton key={i} className="h-[86px] rounded-xl" />
         ))}
       </div>
     )
   }
   if (results === null) {
     return (
-      <div className="empty">
-        <p>Lancez une recherche pour trouver des titres ou des albums.</p>
-      </div>
+      <p className="text-muted-foreground py-20 text-center text-sm">
+        Lancez une recherche pour trouver des titres ou des albums.
+      </p>
     )
   }
   if (results.length === 0) {
-    return (
-      <div className="empty">
-        <p>Aucun résultat.</p>
-      </div>
-    )
+    return <p className="text-muted-foreground py-20 text-center text-sm">Aucun résultat.</p>
   }
 
   return (
-    <div className="grid">
+    <div className="grid gap-3 sm:grid-cols-2">
       {results.map((r) =>
         type === 'songs' ? (
           <Card
@@ -54,25 +54,39 @@ export default function Results({ results, type, loading, onOpenSong, onOpenAlbu
 
 function Card({ title, sub, badge, extra, thumbnail, onClick }) {
   return (
-    <div className="card card-clickable" onClick={onClick}>
+    <div
+      className="bg-card hover:bg-accent/50 group flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors"
+      onClick={onClick}
+    >
       {thumbnail ? (
-        <img className="cover" src={thumbnail} alt={title} loading="lazy" />
+        <img
+          className="size-15 shrink-0 rounded-md object-cover"
+          src={thumbnail}
+          alt={title}
+          loading="lazy"
+        />
       ) : (
-        <div className="cover cover-placeholder">♫</div>
+        <div className="bg-muted text-muted-foreground flex size-15 shrink-0 items-center justify-center rounded-md">
+          <MusicIcon className="size-6" />
+        </div>
       )}
-      <div className="card-body">
-        <div className="card-title" title={title}>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium" title={title}>
           {title}
-        </div>
-        <div className="card-sub" title={sub}>
+        </p>
+        <p className="text-muted-foreground truncate text-sm" title={sub}>
           {sub}
-        </div>
-        <div className="card-meta">
-          {badge && <span className="badge">{badge}</span>}
-          {extra && <span className="duration">{extra}</span>}
+        </p>
+        <div className="mt-1.5 flex items-center gap-2">
+          {badge && (
+            <Badge variant="secondary" className="max-w-40 truncate">
+              {badge}
+            </Badge>
+          )}
+          {extra && <span className="text-muted-foreground text-xs">{extra}</span>}
         </div>
       </div>
-      <span className="chevron">›</span>
+      <ChevronRightIcon className="text-muted-foreground group-hover:text-foreground size-4 shrink-0 transition-colors" />
     </div>
   )
 }

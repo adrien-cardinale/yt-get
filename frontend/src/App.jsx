@@ -1,9 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { FolderIcon, MoonIcon, Music2Icon, SearchIcon, SunIcon } from 'lucide-react'
 import * as api from './api.js'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import AlbumView from './components/AlbumView.jsx'
 import Downloads from './components/Downloads.jsx'
 import Results from './components/Results.jsx'
 import SongView from './components/SongView.jsx'
+
+function ThemeToggle() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
+  const toggle = () => {
+    const next = !dark
+    setDark(next)
+    document.documentElement.classList.toggle('dark', next)
+    localStorage.setItem('yt-get-theme', next ? 'dark' : 'light')
+  }
+  return (
+    <Button variant="ghost" size="icon" onClick={toggle} title="Basculer le thème">
+      {dark ? <SunIcon /> : <MoonIcon />}
+    </Button>
+  )
+}
 
 export default function App() {
   const [query, setQuery] = useState('')
@@ -31,23 +50,20 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  const runSearch = useCallback(
-    async (q, t) => {
-      if (!q.trim()) return
-      lastSearch.current = q
-      setLoading(true)
-      setError(null)
-      try {
-        setResults(await api.search(q, t))
-      } catch (e) {
-        setError(`Recherche impossible : ${e.message}`)
-        setResults(null)
-      } finally {
-        setLoading(false)
-      }
-    },
-    [],
-  )
+  const runSearch = useCallback(async (q, t) => {
+    if (!q.trim()) return
+    lastSearch.current = q
+    setLoading(true)
+    setError(null)
+    try {
+      setResults(await api.search(q, t))
+    } catch (e) {
+      setError(`Recherche impossible : ${e.message}`)
+      setResults(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   const onSubmit = (e) => {
     e.preventDefault()
@@ -76,69 +92,81 @@ export default function App() {
   }
 
   return (
-    <div className="layout">
-      <main className="main">
-        <header className="hero">
-          <h1>
-            <span className="logo">♫</span> yt-get
-          </h1>
-          <p className="subtitle">
-            Recherchez, téléchargez, taguez — prêt pour Navidrome
-            {musicDir && <span className="music-dir"> · {musicDir}</span>}
-          </p>
-        </header>
+    <div className="flex min-h-screen flex-col lg:flex-row">
+      <main className="min-w-0 flex-1 px-5 py-10 lg:px-12">
+        <div className="mx-auto max-w-3xl">
+          <header>
+            <div className="flex items-start justify-between">
+              <h1 className="flex items-center gap-2.5 text-3xl font-extrabold tracking-tight">
+                <span className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-xl">
+                  <Music2Icon className="size-5" />
+                </span>
+                yt-get
+              </h1>
+              <ThemeToggle />
+            </div>
+            <p className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 text-sm">
+              Recherchez, téléchargez, taguez — prêt pour Navidrome
+              {musicDir && (
+                <span className="text-muted-foreground/70 flex items-center gap-1 font-mono text-xs">
+                  <FolderIcon className="size-3" />
+                  {musicDir}
+                </span>
+              )}
+            </p>
+          </header>
 
-        <form className="search-bar" onSubmit={onSubmit}>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Artiste, titre, album…"
-            autoFocus
+          <form className="mt-7 flex gap-2" onSubmit={onSubmit}>
+            <div className="relative flex-1">
+              <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+              <Input
+                className="h-10 pl-9"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Artiste, titre, album…"
+                autoFocus
+              />
+            </div>
+            <Button type="submit" size="lg" className="h-10" disabled={loading || !query.trim()}>
+              Rechercher
+            </Button>
+          </form>
+
+          <Tabs value={type} onValueChange={switchType} className="mt-4 mb-6">
+            <TabsList>
+              <TabsTrigger value="songs" className="px-6">
+                Titres
+              </TabsTrigger>
+              <TabsTrigger value="albums" className="px-6">
+                Albums
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {error && (
+            <div
+              className="border-destructive/50 bg-destructive/10 text-destructive mb-5 cursor-pointer rounded-lg border px-4 py-3 text-sm"
+              onClick={() => setError(null)}
+              title="Cliquer pour fermer"
+            >
+              {error}
+            </div>
+          )}
+
+          <Results
+            results={results}
+            type={type}
+            loading={loading}
+            onOpenSong={setOpenSong}
+            onOpenAlbum={setOpenAlbum}
           />
-          <button type="submit" disabled={loading || !query.trim()}>
-            {loading ? '…' : 'Rechercher'}
-          </button>
-        </form>
-
-        <div className="tabs">
-          <button
-            className={type === 'songs' ? 'tab active' : 'tab'}
-            onClick={() => switchType('songs')}
-          >
-            Titres
-          </button>
-          <button
-            className={type === 'albums' ? 'tab active' : 'tab'}
-            onClick={() => switchType('albums')}
-          >
-            Albums
-          </button>
         </div>
-
-        {error && (
-          <div className="error" onClick={() => setError(null)}>
-            {error}
-          </div>
-        )}
-
-        <Results
-          results={results}
-          type={type}
-          loading={loading}
-          onOpenSong={setOpenSong}
-          onOpenAlbum={setOpenAlbum}
-        />
       </main>
 
       <Downloads jobs={jobs} />
 
       {openSong && (
-        <SongView
-          song={openSong}
-          onClose={() => setOpenSong(null)}
-          onDownloadSong={startSong}
-        />
+        <SongView song={openSong} onClose={() => setOpenSong(null)} onDownloadSong={startSong} />
       )}
 
       {openAlbum && (

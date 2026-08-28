@@ -1,4 +1,13 @@
 import { useSyncExternalStore } from 'react'
+import { DownloadIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const OPTIONS = [
   { id: 'best', label: 'Originale' },
@@ -8,7 +17,7 @@ const OPTIONS = [
   { id: 'mp3-128', label: 'MP3 128' },
 ]
 
-// Qualité partagée entre toutes les listes déroulantes et mémorisée.
+// Qualité partagée entre tous les sélecteurs et mémorisée.
 let quality = localStorage.getItem('yt-get-quality') || 'best'
 const listeners = new Set()
 
@@ -23,30 +32,37 @@ const setQuality = (q) => {
   listeners.forEach((fn) => fn())
 }
 
-/** Liste déroulante de qualité + bouton télécharger. */
-export default function DownloadMenu({ onDownload, primary = false, label = 'Télécharger' }) {
+/** Sélecteur de qualité + bouton télécharger. */
+export default function DownloadMenu({ onDownload, compact = false, label = 'Télécharger' }) {
   const q = useSyncExternalStore(subscribe, () => quality)
   return (
-    <div className="dl-wrap" onClick={(e) => e.stopPropagation()}>
-      <select
-        className="dl-select"
-        title="Qualité — « Originale » : Opus/M4A sans réencodage"
-        value={q}
-        onChange={(e) => setQuality(e.target.value)}
-      >
-        {OPTIONS.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <button
-        className={primary ? 'btn-primary' : 'btn-download'}
-        title="Télécharger"
-        onClick={() => onDownload(q)}
-      >
-        {primary ? `⬇ ${label}` : '⬇'}
-      </button>
+    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <Select value={q} onValueChange={setQuality}>
+        <SelectTrigger
+          size="sm"
+          className={compact ? 'w-[110px]' : 'w-[120px]'}
+          title="Qualité — « Originale » : Opus/M4A sans réencodage"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {OPTIONS.map((o) => (
+            <SelectItem key={o.id} value={o.id}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {compact ? (
+        <Button size="icon-sm" variant="secondary" title="Télécharger" onClick={() => onDownload(q)}>
+          <DownloadIcon />
+        </Button>
+      ) : (
+        <Button onClick={() => onDownload(q)}>
+          <DownloadIcon />
+          {label}
+        </Button>
+      )}
     </div>
   )
 }

@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react'
+import { MusicIcon } from 'lucide-react'
 import { getAlbum } from '../api.js'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import DownloadMenu from './DownloadMenu.jsx'
 
 export default function AlbumView({ browseId, onClose, onDownloadAlbum, onDownloadSong }) {
@@ -16,56 +25,71 @@ export default function AlbumView({ browseId, onClose, onDownloadAlbum, onDownlo
     }
   }, [browseId])
 
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>
-          ✕
-        </button>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
+        {error && <p className="text-destructive text-sm">{error}</p>}
 
-        {error && <div className="error">{error}</div>}
-        {!album && !error && <div className="empty">Chargement…</div>}
+        {!album && !error && (
+          <div className="flex gap-5">
+            <Skeleton className="size-36 shrink-0 rounded-lg" />
+            <div className="flex-1 space-y-3 py-2">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-8 w-56" />
+            </div>
+          </div>
+        )}
 
         {album && (
           <>
-            <div className="album-header">
+            <div className="flex gap-5">
               {album.thumbnail ? (
-                <img className="album-cover" src={album.thumbnail} alt={album.title} />
+                <img
+                  className="size-36 shrink-0 rounded-lg object-cover"
+                  src={album.thumbnail}
+                  alt={album.title}
+                />
               ) : (
-                <div className="album-cover cover-placeholder">♫</div>
+                <div className="bg-muted text-muted-foreground flex size-36 shrink-0 items-center justify-center rounded-lg">
+                  <MusicIcon className="size-10" />
+                </div>
               )}
-              <div className="album-info">
-                <h2>{album.title}</h2>
-                <p>
+              <DialogHeader className="min-w-0 justify-center gap-3">
+                <DialogTitle className="leading-snug">{album.title}</DialogTitle>
+                <DialogDescription>
                   {album.artist}
                   {album.year && ` · ${album.year}`}
                   {` · ${album.tracks.length} piste${album.tracks.length > 1 ? 's' : ''}`}
-                </p>
+                </DialogDescription>
                 <DownloadMenu
-                  primary
                   label="Télécharger l'album"
                   onDownload={(quality) => {
                     onDownloadAlbum(album, quality)
                     onClose()
                   }}
                 />
-              </div>
+              </DialogHeader>
             </div>
 
-            <ol className="tracklist">
+            <ol className="-mx-2 min-h-0 flex-1 overflow-y-auto">
               {album.tracks.map((t) => (
-                <li key={t.videoId || t.track} className="track">
-                  <span className="track-num">{t.track}</span>
-                  <span className="track-title">{t.title}</span>
-                  {t.duration && <span className="duration">{t.duration}</span>}
+                <li
+                  key={t.videoId || t.track}
+                  className="hover:bg-accent/50 flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors"
+                >
+                  <span className="text-muted-foreground w-5 shrink-0 text-right text-sm tabular-nums">
+                    {t.track}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{t.title}</span>
+                  {t.duration && (
+                    <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                      {t.duration}
+                    </span>
+                  )}
                   {t.videoId && (
                     <DownloadMenu
+                      compact
                       onDownload={(quality) =>
                         onDownloadSong(
                           {
@@ -86,7 +110,7 @@ export default function AlbumView({ browseId, onClose, onDownloadAlbum, onDownlo
             </ol>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

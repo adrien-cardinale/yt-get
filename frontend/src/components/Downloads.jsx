@@ -1,9 +1,5 @@
-const STATUS_LABEL = {
-  queued: 'En attente',
-  downloading: 'Téléchargement',
-  done: 'Terminé',
-  error: 'Erreur',
-}
+import { CheckCircle2Icon, DownloadIcon, Loader2Icon, MusicIcon, XCircleIcon } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
 
 const QUALITY_LABEL = {
   best: 'Originale',
@@ -13,46 +9,76 @@ const QUALITY_LABEL = {
   'mp3-128': 'MP3 128',
 }
 
+function StatusLine({ job }) {
+  const quality = QUALITY_LABEL[job.quality] || job.quality
+  if (job.status === 'done') {
+    return (
+      <span className="text-success flex items-center gap-1">
+        <CheckCircle2Icon className="size-3.5" /> Terminé · {quality}
+      </span>
+    )
+  }
+  if (job.status === 'error') {
+    return (
+      <span className="text-destructive flex items-center gap-1">
+        <XCircleIcon className="size-3.5" /> Erreur
+      </span>
+    )
+  }
+  if (job.status === 'downloading') {
+    return (
+      <span className="text-muted-foreground flex items-center gap-1">
+        <Loader2Icon className="size-3.5 animate-spin" />
+        {Math.round(job.progress * 100)} % · {quality}
+      </span>
+    )
+  }
+  return <span className="text-muted-foreground">En attente · {quality}</span>
+}
+
 export default function Downloads({ jobs }) {
   return (
-    <aside className="downloads">
-      <h2>Téléchargements</h2>
-      {jobs.length === 0 && <p className="empty-side">Aucun téléchargement.</p>}
-      {jobs.map((job) => (
-        <div key={job.id} className={`job job-${job.status}`}>
-          <div className="job-row">
-            {job.thumbnail ? (
-              <img className="job-thumb" src={job.thumbnail} alt="" />
-            ) : (
-              <div className="job-thumb cover-placeholder">♫</div>
+    <aside className="bg-card/40 shrink-0 border-t p-5 lg:sticky lg:top-0 lg:h-screen lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
+      <h2 className="text-muted-foreground mb-4 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
+        <DownloadIcon className="size-3.5" />
+        Téléchargements
+      </h2>
+
+      {jobs.length === 0 && (
+        <p className="text-muted-foreground text-sm">Aucun téléchargement.</p>
+      )}
+
+      <div className="space-y-2.5">
+        {jobs.map((job) => (
+          <div key={job.id} className="bg-card space-y-2.5 rounded-lg border p-3">
+            <div className="flex items-center gap-3">
+              {job.thumbnail ? (
+                <img className="size-10 shrink-0 rounded-md object-cover" src={job.thumbnail} alt="" />
+              ) : (
+                <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md">
+                  <MusicIcon className="size-4" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium" title={job.title}>
+                  {job.title}
+                </p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {job.artist}
+                  {job.kind === 'album' && ` · ${job.tracks.length} pistes`}
+                </p>
+                <div className="mt-0.5 text-xs">
+                  <StatusLine job={job} />
+                </div>
+              </div>
+            </div>
+            {job.status === 'downloading' && <Progress value={job.progress * 100} />}
+            {job.error && (
+              <p className="text-destructive text-xs break-words">{job.error}</p>
             )}
-            <div className="job-info">
-              <div className="job-title" title={job.title}>
-                {job.title}
-              </div>
-              <div className="job-sub">
-                {job.artist}
-                {job.kind === 'album' && ` · ${job.tracks.length} pistes`}
-              </div>
-              <div className="job-status">
-                {STATUS_LABEL[job.status]}
-                {job.quality && ` · ${QUALITY_LABEL[job.quality] || job.quality}`}
-                {job.status === 'downloading' &&
-                  ` — ${Math.round(job.progress * 100)} %`}
-              </div>
-            </div>
           </div>
-          {job.status === 'downloading' && (
-            <div className="progress">
-              <div
-                className="progress-fill"
-                style={{ width: `${job.progress * 100}%` }}
-              />
-            </div>
-          )}
-          {job.error && <div className="job-error">{job.error}</div>}
-        </div>
-      ))}
+        ))}
+      </div>
     </aside>
   )
 }

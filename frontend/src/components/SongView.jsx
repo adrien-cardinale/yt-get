@@ -1,43 +1,45 @@
-import { useEffect } from 'react'
+import { MusicIcon } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import DownloadMenu from './DownloadMenu.jsx'
 
 export default function SongView({ song, onClose, onDownloadSong }) {
-  useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-song" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>
-          ✕
-        </button>
-
-        <div className="album-header">
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <div className="flex gap-5">
           {song.thumbnail ? (
-            <img className="album-cover" src={song.thumbnail} alt={song.title} />
+            <img
+              className="size-32 shrink-0 rounded-lg object-cover"
+              src={song.thumbnail}
+              alt={song.title}
+            />
           ) : (
-            <div className="album-cover cover-placeholder">♫</div>
+            <div className="bg-muted text-muted-foreground flex size-32 shrink-0 items-center justify-center rounded-lg">
+              <MusicIcon className="size-10" />
+            </div>
           )}
-          <div className="album-info">
-            <h2>{song.title}</h2>
-            <p>
+          <DialogHeader className="min-w-0 justify-center gap-3">
+            <DialogTitle className="leading-snug">{song.title}</DialogTitle>
+            <DialogDescription>
               {song.artist}
               {song.album && ` · ${song.album}`}
               {song.duration && ` · ${song.duration}`}
-            </p>
+            </DialogDescription>
             <DownloadMenu
-              primary
               onDownload={(quality) => {
                 onDownloadSong(song, quality)
                 onClose()
               }}
             />
-          </div>
+          </DialogHeader>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
