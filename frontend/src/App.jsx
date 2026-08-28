@@ -3,6 +3,7 @@ import * as api from './api.js'
 import AlbumView from './components/AlbumView.jsx'
 import Downloads from './components/Downloads.jsx'
 import Results from './components/Results.jsx'
+import SongView from './components/SongView.jsx'
 
 export default function App() {
   const [query, setQuery] = useState('')
@@ -11,6 +12,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [openAlbum, setOpenAlbum] = useState(null)
+  const [openSong, setOpenSong] = useState(null)
   const [jobs, setJobs] = useState([])
   const [musicDir, setMusicDir] = useState('')
   const lastSearch = useRef('')
@@ -57,17 +59,17 @@ export default function App() {
     if (lastSearch.current) runSearch(lastSearch.current, t)
   }
 
-  const startSong = async (song) => {
+  const startSong = async (song, quality) => {
     try {
-      await api.downloadSong(song)
+      await api.downloadSong({ ...song, quality })
     } catch (e) {
       setError(`Téléchargement impossible : ${e.message}`)
     }
   }
 
-  const startAlbum = async (browseId) => {
+  const startAlbum = async (album, quality) => {
     try {
-      await api.downloadAlbum(browseId)
+      await api.downloadAlbum(album.browseId, quality)
     } catch (e) {
       setError(`Téléchargement impossible : ${e.message}`)
     }
@@ -124,12 +126,20 @@ export default function App() {
           results={results}
           type={type}
           loading={loading}
-          onDownloadSong={startSong}
+          onOpenSong={setOpenSong}
           onOpenAlbum={setOpenAlbum}
         />
       </main>
 
       <Downloads jobs={jobs} />
+
+      {openSong && (
+        <SongView
+          song={openSong}
+          onClose={() => setOpenSong(null)}
+          onDownloadSong={startSong}
+        />
+      )}
 
       {openAlbum && (
         <AlbumView

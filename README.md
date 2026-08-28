@@ -52,13 +52,19 @@ Le backend sert alors le frontend compilé (`frontend/dist`) directement sur
 
 - **Recherche** : `ytmusicapi` interroge YouTube Music (résultats plus propres
   que YouTube : vrais titres, artistes, albums, années, pochettes).
-- **Téléchargement** : `yt-dlp` récupère le meilleur flux audio et le convertit
-  en MP3 (qualité maximale) via ffmpeg. Un album = un job qui télécharge
-  chaque piste séquentiellement ; l'échec d'une piste n'interrompt pas les
-  autres.
-- **Tagging** : `mutagen` écrit les tags ID3v2.3 (compatibilité maximale),
-  pochette intégrée en 600×600. Pour un single, l'album d'origine est consulté
-  pour récupérer l'année et le numéro de piste.
+- **Qualité** : cliquer sur une vignette ouvre sa fiche détail (titre ou
+  album) ; c'est là que se trouvent la liste déroulante de qualité —
+  **Originale** (Opus/M4A extrait sans réencodage, recommandé) ou MP3 320 /
+  V0 / 192 / 128 kbps — et le bouton de téléchargement. Le choix est partagé
+  et mémorisé. (L'API expose aussi `GET /api/formats/{videoId}` pour lister
+  les flux disponibles à la source.)
+- **Téléchargement** : `yt-dlp` récupère le flux audio choisi et le convertit
+  si nécessaire via ffmpeg. Un album = un job qui télécharge chaque piste
+  séquentiellement ; l'échec d'une piste n'interrompt pas les autres.
+- **Tagging** : `mutagen` écrit les tags selon le conteneur — ID3v2.3 pour
+  MP3, commentaires Vorbis pour Opus/Ogg, atomes MP4 pour M4A — avec pochette
+  intégrée en 600×600. Pour un single, l'album d'origine est consulté pour
+  récupérer l'année et le numéro de piste. Navidrome lit les trois formats.
 - **Suivi** : le panneau latéral affiche la progression en temps réel
   (polling toutes les secondes).
 

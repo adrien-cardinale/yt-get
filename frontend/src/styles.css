@@ -434,6 +434,14 @@ body {
   color: var(--text);
 }
 
+.modal-song {
+  max-width: 520px;
+}
+
+.modal-song .album-header {
+  margin-bottom: 0;
+}
+
 .album-header {
   display: flex;
   gap: 20px;
@@ -464,12 +472,6 @@ body {
 
 .album-info p {
   color: var(--text-dim);
-  font-size: 0.9rem;
-}
-
-.album-info .btn-primary {
-  align-self: flex-start;
-  padding: 10px 20px;
   font-size: 0.9rem;
 }
 
@@ -509,6 +511,63 @@ body {
   width: 32px;
   height: 32px;
   font-size: 0.85rem;
+}
+
+/* ---- Sélecteur de qualité + bouton télécharger ---- */
+.dl-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dl-select {
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.dl-select:hover,
+.dl-select:focus {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.dl-select option {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.album-info .dl-wrap {
+  align-self: flex-start;
+}
+
+.album-info .dl-wrap .btn-primary {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+}
+
+.album-info .dl-select {
+  padding: 9px 8px;
+}
+
+.track .dl-wrap .btn-download {
+  width: 30px;
+  height: 30px;
+  font-size: 0.8rem;
+}
+
+.track .dl-select {
+  padding: 4px 6px;
+  font-size: 0.72rem;
 }
 
 /* ---- Responsive ---- */

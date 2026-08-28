@@ -25,12 +25,15 @@ export const downloadSong = (song) =>
     body: JSON.stringify(song),
   })
 
-export const downloadAlbum = (browseId) =>
+export const downloadAlbum = (browseId, quality) =>
   request('/api/download/album', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ browseId }),
+    body: JSON.stringify({ browseId, quality }),
   })
+
+export const getFormats = (videoId) =>
+  request(`/api/formats/${encodeURIComponent(videoId)}`)
 
 export const getJobs = () => request('/api/jobs')
 

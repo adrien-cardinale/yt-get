@@ -5,6 +5,14 @@ const STATUS_LABEL = {
   error: 'Erreur',
 }
 
+const QUALITY_LABEL = {
+  best: 'Originale',
+  'mp3-320': 'MP3 320',
+  'mp3-v0': 'MP3 V0',
+  'mp3-192': 'MP3 192',
+  'mp3-128': 'MP3 128',
+}
+
 export default function Downloads({ jobs }) {
   return (
     <aside className="downloads">
@@ -28,6 +36,7 @@ export default function Downloads({ jobs }) {
               </div>
               <div className="job-status">
                 {STATUS_LABEL[job.status]}
+                {job.quality && ` · ${QUALITY_LABEL[job.quality] || job.quality}`}
                 {job.status === 'downloading' &&
                   ` — ${Math.round(job.progress * 100)} %`}
               </div>

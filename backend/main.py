@@ -8,7 +8,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from ytmusicapi import YTMusic
 
-from downloader import MUSIC_DIR, best_thumbnail, jobs, start_job
+from downloader import (
+    MUSIC_DIR,
+    QUALITIES,
+    best_thumbnail,
+    jobs,
+    list_formats,
+    start_job,
+)
 
 app = FastAPI(title="yt-get")
 app.add_middleware(
@@ -83,6 +90,14 @@ def album(browse_id: str):
     }
 
 
+@app.get("/api/formats/{video_id}")
+def formats(video_id: str):
+    try:
+        return list_formats(video_id)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Formats indisponibles : {exc}") from exc
+
+
 class SongRequest(BaseModel):
     videoId: str
     title: str
@@ -90,14 +105,23 @@ class SongRequest(BaseModel):
     album: str | None = None
     albumId: str | None = None
     thumbnail: str | None = None
+    quality: str = "best"
+    formatId: str | None = None
 
 
 class AlbumRequest(BaseModel):
     browseId: str
+    quality: str = "best"
+
+
+def _check_quality(quality: str) -> None:
+    if quality not in QUALITIES:
+        raise HTTPException(400, f"Qualité inconnue : {quality}")
 
 
 @app.post("/api/download/song")
 def download_song(req: SongRequest):
+    _check_quality(req.quality)
     meta = {
         "title": req.title,
         "artist": req.artist,
@@ -125,12 +149,20 @@ def download_song(req: SongRequest):
                     break
         except Exception:  # noqa: BLE001 — tagging minimal si l'album est inaccessible
             pass
-    tracks = [{"video_id": req.videoId, "title": req.title, "meta": meta}]
-    return start_job("song", req.title, req.artist, req.thumbnail, tracks, cover_url)
+    tracks = [{
+        "video_id": req.videoId,
+        "title": req.title,
+        "meta": meta,
+        "format_id": req.formatId,
+    }]
+    return start_job(
+        "song", req.title, req.artist, req.thumbnail, tracks, cover_url, req.quality
+    )
 
 
 @app.post("/api/download/album")
 def download_album(req: AlbumRequest):
+    _check_quality(req.quality)
     a = album(req.browseId)
     playable = [t for t in a["tracks"] if t["videoId"]]
     if not playable:
@@ -151,7 +183,10 @@ def download_album(req: AlbumRequest):
         }
         for t in playable
     ]
-    return start_job("album", a["title"], a["artist"], a["thumbnail"], tracks, a["thumbnail"])
+    return start_job(
+        "album", a["title"], a["artist"], a["thumbnail"], tracks,
+        a["thumbnail"], req.quality,
+    )
 
 
 @app.get("/api/jobs")

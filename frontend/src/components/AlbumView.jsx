@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getAlbum } from '../api.js'
+import DownloadMenu from './DownloadMenu.jsx'
 
 export default function AlbumView({ browseId, onClose, onDownloadAlbum, onDownloadSong }) {
   const [album, setAlbum] = useState(null)
@@ -46,15 +47,14 @@ export default function AlbumView({ browseId, onClose, onDownloadAlbum, onDownlo
                   {album.year && ` · ${album.year}`}
                   {` · ${album.tracks.length} piste${album.tracks.length > 1 ? 's' : ''}`}
                 </p>
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    onDownloadAlbum(album.browseId)
+                <DownloadMenu
+                  primary
+                  label="Télécharger l'album"
+                  onDownload={(quality) => {
+                    onDownloadAlbum(album, quality)
                     onClose()
                   }}
-                >
-                  ⬇ Télécharger l'album
-                </button>
+                />
               </div>
             </div>
 
@@ -65,22 +65,21 @@ export default function AlbumView({ browseId, onClose, onDownloadAlbum, onDownlo
                   <span className="track-title">{t.title}</span>
                   {t.duration && <span className="duration">{t.duration}</span>}
                   {t.videoId && (
-                    <button
-                      className="btn-download"
-                      title="Télécharger ce titre"
-                      onClick={() =>
-                        onDownloadSong({
-                          videoId: t.videoId,
-                          title: t.title,
-                          artist: t.artist || album.artist,
-                          album: album.title,
-                          albumId: album.browseId,
-                          thumbnail: album.thumbnail,
-                        })
+                    <DownloadMenu
+                      onDownload={(quality) =>
+                        onDownloadSong(
+                          {
+                            videoId: t.videoId,
+                            title: t.title,
+                            artist: t.artist || album.artist,
+                            album: album.title,
+                            albumId: album.browseId,
+                            thumbnail: album.thumbnail,
+                          },
+                          quality,
+                        )
                       }
-                    >
-                      ⬇
-                    </button>
+                    />
                   )}
                 </li>
               ))}

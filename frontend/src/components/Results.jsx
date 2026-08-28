@@ -1,4 +1,4 @@
-export default function Results({ results, type, loading, onDownloadSong, onOpenAlbum }) {
+export default function Results({ results, type, loading, onOpenSong, onOpenAlbum }) {
   if (loading) {
     return (
       <div className="grid">
@@ -27,64 +27,49 @@ export default function Results({ results, type, loading, onDownloadSong, onOpen
     <div className="grid">
       {results.map((r) =>
         type === 'songs' ? (
-          <SongCard key={r.videoId} song={r} onDownload={onDownloadSong} />
+          <Card
+            key={r.videoId}
+            title={r.title}
+            sub={r.artist}
+            badge={r.album}
+            extra={r.duration}
+            thumbnail={r.thumbnail}
+            onClick={() => onOpenSong(r)}
+          />
         ) : (
-          <AlbumCard key={r.browseId} album={r} onOpen={onOpenAlbum} />
+          <Card
+            key={r.browseId}
+            title={r.title}
+            sub={r.artist}
+            badge={r.type}
+            extra={r.year}
+            thumbnail={r.thumbnail}
+            onClick={() => onOpenAlbum(r.browseId)}
+          />
         ),
       )}
     </div>
   )
 }
 
-function Cover({ url, alt }) {
-  return url ? (
-    <img className="cover" src={url} alt={alt} loading="lazy" />
-  ) : (
-    <div className="cover cover-placeholder">♫</div>
-  )
-}
-
-function SongCard({ song, onDownload }) {
+function Card({ title, sub, badge, extra, thumbnail, onClick }) {
   return (
-    <div className="card">
-      <Cover url={song.thumbnail} alt={song.title} />
+    <div className="card card-clickable" onClick={onClick}>
+      {thumbnail ? (
+        <img className="cover" src={thumbnail} alt={title} loading="lazy" />
+      ) : (
+        <div className="cover cover-placeholder">♫</div>
+      )}
       <div className="card-body">
-        <div className="card-title" title={song.title}>
-          {song.title}
+        <div className="card-title" title={title}>
+          {title}
         </div>
-        <div className="card-sub" title={song.artist}>
-          {song.artist}
+        <div className="card-sub" title={sub}>
+          {sub}
         </div>
         <div className="card-meta">
-          {song.album && <span className="badge">{song.album}</span>}
-          {song.duration && <span className="duration">{song.duration}</span>}
-        </div>
-      </div>
-      <button
-        className="btn-download"
-        title="Télécharger"
-        onClick={() => onDownload(song)}
-      >
-        ⬇
-      </button>
-    </div>
-  )
-}
-
-function AlbumCard({ album, onOpen }) {
-  return (
-    <div className="card card-clickable" onClick={() => onOpen(album.browseId)}>
-      <Cover url={album.thumbnail} alt={album.title} />
-      <div className="card-body">
-        <div className="card-title" title={album.title}>
-          {album.title}
-        </div>
-        <div className="card-sub" title={album.artist}>
-          {album.artist}
-        </div>
-        <div className="card-meta">
-          {album.type && <span className="badge">{album.type}</span>}
-          {album.year && <span className="duration">{album.year}</span>}
+          {badge && <span className="badge">{badge}</span>}
+          {extra && <span className="duration">{extra}</span>}
         </div>
       </div>
       <span className="chevron">›</span>

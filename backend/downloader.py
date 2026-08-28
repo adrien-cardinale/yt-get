@@ -1,5 +1,6 @@
-"""Téléchargement yt-dlp + tagging ID3 pour Navidrome."""
+"""Téléchargement yt-dlp + tagging (ID3/Vorbis/MP4) pour Navidrome."""
 
+import base64
 import os
 import re
 import shutil
@@ -10,9 +11,25 @@ from pathlib import Path
 
 import requests
 import yt_dlp
+from mutagen.flac import Picture
 from mutagen.id3 import APIC, ID3, TALB, TDRC, TIT2, TPE1, TPE2, TRCK
+from mutagen.mp4 import MP4, MP4Cover
+from mutagen.oggopus import OggOpus
+from mutagen.oggvorbis import OggVorbis
 
 MUSIC_DIR = Path(os.environ.get("MUSIC_DIR", str(Path.home() / "music")))
+
+# Formats de sortie proposés à l'utilisateur.
+# "best" = extraction sans réencodage (Opus/M4A selon la source).
+QUALITIES = {
+    "best": {"preferredcodec": "best"},
+    "mp3-320": {"preferredcodec": "mp3", "preferredquality": "320"},
+    "mp3-v0": {"preferredcodec": "mp3", "preferredquality": "0"},
+    "mp3-192": {"preferredcodec": "mp3", "preferredquality": "192"},
+    "mp3-128": {"preferredcodec": "mp3", "preferredquality": "128"},
+}
+
+AUDIO_EXTS = {".mp3", ".opus", ".ogg", ".m4a", ".aac", ".flac", ".wav"}
 
 jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
@@ -42,7 +59,37 @@ def fetch_cover(url: str | None) -> bytes | None:
         return None
 
 
-def tag_file(path: Path, meta: dict, cover: bytes | None) -> None:
+def list_formats(video_id: str) -> list[dict]:
+    """Formats audio disponibles à la source, du meilleur au moins bon."""
+    opts = {"quiet": True, "no_warnings": True, "noplaylist": True}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(
+            f"https://music.youtube.com/watch?v={video_id}", download=False
+        )
+    out = []
+    for f in info.get("formats", []):
+        if f.get("acodec") in (None, "none"):
+            continue
+        if f.get("vcodec") not in (None, "none"):
+            continue
+        out.append({
+            "formatId": f["format_id"],
+            "ext": f.get("ext"),
+            "codec": f.get("acodec"),
+            "abr": f.get("abr"),
+            "filesize": f.get("filesize") or f.get("filesize_approx"),
+        })
+    out.sort(key=lambda x: x["abr"] or 0, reverse=True)
+    return out
+
+
+# ---------------------------------------------------------------- tagging
+
+def _cover_mime(cover: bytes) -> str:
+    return "image/png" if cover[:8] == b"\x89PNG\r\n\x1a\n" else "image/jpeg"
+
+
+def _tag_id3(path: Path, meta: dict, cover: bytes | None) -> None:
     tags = ID3()
     tags.add(TIT2(encoding=3, text=meta["title"]))
     tags.add(TPE1(encoding=3, text=meta["artist"]))
@@ -55,13 +102,63 @@ def tag_file(path: Path, meta: dict, cover: bytes | None) -> None:
         trck = f"{meta['track']}/{total}" if total else str(meta["track"])
         tags.add(TRCK(encoding=3, text=trck))
     if cover:
-        mime = "image/png" if cover[:8] == b"\x89PNG\r\n\x1a\n" else "image/jpeg"
-        tags.add(APIC(encoding=3, mime=mime, type=3, desc="Cover", data=cover))
+        tags.add(APIC(encoding=3, mime=_cover_mime(cover), type=3, desc="Cover", data=cover))
     tags.save(path, v2_version=3)
 
 
-def _download_audio(video_id: str, dest_dir: Path, progress_cb) -> Path:
-    """Télécharge une vidéo en mp3 dans dest_dir, renvoie le chemin du fichier."""
+def _tag_vorbis(path: Path, meta: dict, cover: bytes | None) -> None:
+    audio = OggOpus(path) if path.suffix.lower() == ".opus" else OggVorbis(path)
+    audio["title"] = [meta["title"]]
+    audio["artist"] = [meta["artist"]]
+    audio["albumartist"] = [meta.get("album_artist") or meta["artist"]]
+    audio["album"] = [meta.get("album") or meta["title"]]
+    if meta.get("year"):
+        audio["date"] = [str(meta["year"])]
+    if meta.get("track"):
+        audio["tracknumber"] = [str(meta["track"])]
+        if meta.get("track_total"):
+            audio["tracktotal"] = [str(meta["track_total"])]
+    if cover:
+        pic = Picture()
+        pic.type = 3
+        pic.mime = _cover_mime(cover)
+        pic.data = cover
+        audio["metadata_block_picture"] = [base64.b64encode(pic.write()).decode()]
+    audio.save()
+
+
+def _tag_mp4(path: Path, meta: dict, cover: bytes | None) -> None:
+    audio = MP4(path)
+    audio["\xa9nam"] = [meta["title"]]
+    audio["\xa9ART"] = [meta["artist"]]
+    audio["aART"] = [meta.get("album_artist") or meta["artist"]]
+    audio["\xa9alb"] = [meta.get("album") or meta["title"]]
+    if meta.get("year"):
+        audio["\xa9day"] = [str(meta["year"])]
+    if meta.get("track"):
+        audio["trkn"] = [(int(meta["track"]), int(meta.get("track_total") or 0))]
+    if cover:
+        fmt = MP4Cover.FORMAT_PNG if _cover_mime(cover) == "image/png" else MP4Cover.FORMAT_JPEG
+        audio["covr"] = [MP4Cover(cover, imageformat=fmt)]
+    audio.save()
+
+
+def tag_file(path: Path, meta: dict, cover: bytes | None) -> None:
+    ext = path.suffix.lower()
+    if ext == ".mp3":
+        _tag_id3(path, meta, cover)
+    elif ext in (".opus", ".ogg"):
+        _tag_vorbis(path, meta, cover)
+    elif ext == ".m4a":
+        _tag_mp4(path, meta, cover)
+    # autres extensions : fichier livré sans tags plutôt que d'échouer
+
+
+# ---------------------------------------------------------------- download
+
+def _download_audio(video_id: str, dest_dir: Path, progress_cb,
+                    quality: str, format_id: str | None = None) -> Path:
+    """Télécharge une vidéo en audio dans dest_dir, renvoie le chemin du fichier."""
 
     def hook(d):
         if d["status"] == "downloading":
@@ -72,10 +169,10 @@ def _download_audio(video_id: str, dest_dir: Path, progress_cb) -> Path:
             progress_cb(1.0)
 
     opts = {
-        "format": "bestaudio/best",
+        "format": format_id or "bestaudio/best",
         "outtmpl": str(dest_dir / "%(id)s.%(ext)s"),
         "postprocessors": [
-            {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "0"}
+            {"key": "FFmpegExtractAudio", **QUALITIES.get(quality, QUALITIES["best"])}
         ],
         "quiet": True,
         "no_warnings": True,
@@ -84,7 +181,13 @@ def _download_audio(video_id: str, dest_dir: Path, progress_cb) -> Path:
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([f"https://music.youtube.com/watch?v={video_id}"])
-    return dest_dir / f"{video_id}.mp3"
+
+    candidates = [
+        p for p in dest_dir.glob(f"{video_id}.*") if p.suffix.lower() in AUDIO_EXTS
+    ]
+    if not candidates:
+        raise RuntimeError("fichier audio introuvable après téléchargement")
+    return max(candidates, key=lambda p: p.stat().st_mtime)
 
 
 def _finalize_track(tmp_file: Path, meta: dict, cover: bytes | None) -> Path:
@@ -92,22 +195,25 @@ def _finalize_track(tmp_file: Path, meta: dict, cover: bytes | None) -> Path:
     artist_dir = MUSIC_DIR / sanitize(meta.get("album_artist") or meta["artist"])
     album_dir = artist_dir / sanitize(meta.get("album") or meta["title"])
     album_dir.mkdir(parents=True, exist_ok=True)
+    ext = tmp_file.suffix
     if meta.get("track"):
-        filename = f"{int(meta['track']):02d} - {sanitize(meta['title'])}.mp3"
+        filename = f"{int(meta['track']):02d} - {sanitize(meta['title'])}{ext}"
     else:
-        filename = f"{sanitize(meta['title'])}.mp3"
+        filename = f"{sanitize(meta['title'])}{ext}"
     final = album_dir / filename
     shutil.move(str(tmp_file), final)
     return final
 
 
-def create_job(kind: str, title: str, artist: str, thumbnail: str | None, tracks: list[dict]) -> dict:
+def create_job(kind: str, title: str, artist: str, thumbnail: str | None,
+               tracks: list[dict], quality: str) -> dict:
     job = {
         "id": uuid.uuid4().hex[:12],
         "kind": kind,  # "song" | "album"
         "title": title,
         "artist": artist,
         "thumbnail": thumbnail,
+        "quality": quality,
         "status": "queued",  # queued | downloading | done | error
         "progress": 0.0,
         "error": None,
@@ -120,8 +226,8 @@ def create_job(kind: str, title: str, artist: str, thumbnail: str | None, tracks
     return job
 
 
-def run_job(job: dict, tracks: list[dict], cover_url: str | None) -> None:
-    """Exécuté dans un thread. tracks: [{video_id, title, meta{...}}]."""
+def run_job(job: dict, tracks: list[dict], cover_url: str | None, quality: str) -> None:
+    """Exécuté dans un thread. tracks: [{video_id, title, meta{...}, format_id?}]."""
     job["status"] = "downloading"
     cover = fetch_cover(cover_url)
     errors = []
@@ -136,8 +242,10 @@ def run_job(job: dict, tracks: list[dict], cover_url: str | None) -> None:
                 job["progress"] = (i + p) / len(tracks)
 
             try:
-                mp3 = _download_audio(track["video_id"], tmp_dir, cb)
-                _finalize_track(mp3, track["meta"], cover)
+                audio = _download_audio(
+                    track["video_id"], tmp_dir, cb, quality, track.get("format_id")
+                )
+                _finalize_track(audio, track["meta"], cover)
                 jt["status"] = "done"
                 jt["progress"] = 1.0
             except Exception as exc:  # noqa: BLE001 — un échec de piste ne stoppe pas l'album
@@ -154,7 +262,9 @@ def run_job(job: dict, tracks: list[dict], cover_url: str | None) -> None:
 
 
 def start_job(kind: str, title: str, artist: str, thumbnail: str | None,
-              tracks: list[dict], cover_url: str | None) -> dict:
-    job = create_job(kind, title, artist, thumbnail, tracks)
-    threading.Thread(target=run_job, args=(job, tracks, cover_url), daemon=True).start()
+              tracks: list[dict], cover_url: str | None, quality: str = "best") -> dict:
+    job = create_job(kind, title, artist, thumbnail, tracks, quality)
+    threading.Thread(
+        target=run_job, args=(job, tracks, cover_url, quality), daemon=True
+    ).start()
     return job
