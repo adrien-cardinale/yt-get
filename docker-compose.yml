@@ -1,0 +1,13 @@
+services:
+  yt-get:
+    build: .
+    container_name: yt-get
+    ports:
+      - "8000:8000"
+    volumes:
+      # À pointer vers la bibliothèque musicale scannée par Navidrome
+      - ./music:/music
+    # Décommenter pour que les fichiers appartiennent à votre utilisateur
+    # plutôt qu'à root (utile si Navidrome tourne avec ce même UID) :
+    # user: "1000:1000"
+    restart: unless-stopped

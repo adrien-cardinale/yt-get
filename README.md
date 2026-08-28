@@ -9,11 +9,20 @@ Les fichiers sont rangés en `Artiste/Album/NN - Titre.mp3` dans le dossier
 musique (par défaut `~/music`, configurable via la variable d'environnement
 `MUSIC_DIR`).
 
-## Prérequis
+## Docker (recommandé)
 
-- Python ≥ 3.10, Node ≥ 18, `ffmpeg` dans le PATH
+```bash
+docker compose up -d --build
+```
 
-## Installation
+Ouvrir <http://localhost:8000>. La musique est écrite dans le volume monté
+sur `/music` — éditez `docker-compose.yml` pour pointer vers la bibliothèque
+scannée par Navidrome (et décommentez `user:` pour que les fichiers
+appartiennent à votre utilisateur plutôt qu'à root).
+
+## Installation manuelle
+
+Prérequis : Python ≥ 3.10, Node ≥ 18, `ffmpeg` dans le PATH.
 
 ```bash
 cd backend
@@ -24,7 +33,7 @@ cd ../frontend
 npm install
 ```
 
-## Développement
+### Développement
 
 ```bash
 # Terminal 1 — API (port 8000)
@@ -38,7 +47,7 @@ npm run dev
 
 Ouvrir <http://localhost:5173>.
 
-## Production
+### Production (sans Docker)
 
 ```bash
 cd frontend && npm run build
