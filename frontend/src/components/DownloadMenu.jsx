@@ -17,7 +17,6 @@ const OPTIONS = [
   { id: 'mp3-128', label: 'MP3 128' },
 ]
 
-// Qualité partagée entre tous les sélecteurs et mémorisée.
 let quality = localStorage.getItem('yt-get-quality') || 'best'
 const listeners = new Set()
 
@@ -32,7 +31,6 @@ const setQuality = (q) => {
   listeners.forEach((fn) => fn())
 }
 
-/** Sélecteur de qualité + bouton télécharger. */
 export default function DownloadMenu({ onDownload, compact = false, label = 'Télécharger' }) {
   const q = useSyncExternalStore(subscribe, () => quality)
   return (
